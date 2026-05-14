@@ -22,7 +22,7 @@ namespace BossAI
             if (agent.NavMesh != null)
                 agent.NavMesh.isStopped = true;
 
-            agent.Animator?.SetBool("isMoving", false);
+            agent.Animator?.SetFloat("Speed", 0f);
         }
     }
 
@@ -53,7 +53,7 @@ namespace BossAI
             {
                 agent.NavMesh.isStopped = false;
                 agent.NavMesh.destination = _waypoints[_waypointActual].position;
-                agent.Animator?.SetBool("isMoving", true);
+                agent.Animator?.SetFloat("Speed", 1f);
 
                 // Avanzar al siguiente waypoint si hemos llegado
                 if (agent.NavMesh.remainingDistance <= _rangoLlegada)
@@ -79,7 +79,7 @@ namespace BossAI
             {
                 agent.NavMesh.isStopped = false;
                 agent.NavMesh.destination = agent.PlayerTransform.position;
-                agent.Animator?.SetBool("isMoving", true);
+                agent.Animator?.SetFloat("Speed", 1f);
             }
         }
     }
@@ -95,28 +95,92 @@ namespace BossAI
     {
         private readonly float _danio;
         private readonly float _rangoAtaque;
-        private readonly string _animTrigger;
 
-        public MeleeAttackAction(float danio, float rangoAtaque, string animTrigger = "attack")
+        // Cooldown
+        private float _cooldownAtaque = 2f;
+        private float _ultimoAtaque = -999f;
+
+        public MeleeAttackAction(float danio, float rangoAtaque)
         {
             _danio = danio;
             _rangoAtaque = rangoAtaque;
-            _animTrigger = animTrigger;
         }
 
         public override void Execute(BossAgent agent)
         {
-            agent.Animator?.SetTrigger(_animTrigger);
+            if (agent.PlayerTransform == null)
+                return;
 
-            if (agent.PlayerTransform == null) return;
+            // Distancia al jugador
+            float dist = Vector3.Distance(
+                agent.Transform.position,
+                agent.PlayerTransform.position
+            );
 
-            float dist = Vector3.Distance(agent.Transform.position, agent.PlayerTransform.position);
-            if (dist <= _rangoAtaque)
+            // Fuera de rango
+            if (dist > _rangoAtaque)
+                return;
+
+            // Mirar al jugador
+            Vector3 dir =
+                (agent.PlayerTransform.position -
+                 agent.Transform.position).normalized;
+
+            dir.y = 0f;
+
+            if (dir != Vector3.zero)
             {
-                // Aplica daño al jugador — adapta a tu sistema de vida
-                var playerHealth = agent.PlayerTransform.GetComponent<PlayerHealth>();
-                playerHealth?.TakeDamage(_danio);
+                agent.Transform.rotation =
+                    Quaternion.LookRotation(dir);
             }
+
+            // Detener movimiento
+            if (agent.NavMesh != null)
+            {
+                agent.NavMesh.isStopped = true;
+            }
+
+            // Cooldown
+            if (Time.time < _ultimoAtaque + _cooldownAtaque)
+                return;
+
+            _ultimoAtaque = Time.time;
+
+            // =========================
+            // FASE 1
+            // =========================
+
+            if (agent.VidaPorcentaje > 50f)
+            {
+                int randomAttack = Random.Range(0, 2);
+
+                if (randomAttack == 0)
+                {
+                    agent.Animator?.SetTrigger("Attack1");
+                }
+                else
+                {
+                    agent.Animator?.SetTrigger("Attack2");
+                }
+            }
+
+            // =========================
+            // FASE 2
+            // =========================
+
+            else
+            {
+                agent.Animator?.SetTrigger("Attack3");
+            }
+
+            // =========================
+            // DAÑO
+            // =========================
+
+            var playerHealth =
+                agent.PlayerTransform.GetComponent<PlayerHealth>();
+
+            playerHealth?.TakeDamage(_danio);
         }
     }
 

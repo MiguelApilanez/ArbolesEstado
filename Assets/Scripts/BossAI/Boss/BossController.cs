@@ -40,6 +40,13 @@ namespace BossAI
             FSMJerarquica,
             ArbolDecision
         }
+        // ── Componentes ──────────────────────────────────────────────
+
+        private Animator animator;
+        private NavMeshAgent navAgent;
+
+        private BossCombat bossCombat;
+        private BossHealth bossHealth;
 
         // ── Internos ─────────────────────────────────────────────────
         private BossAgent _agent;
@@ -52,6 +59,15 @@ namespace BossAI
 
         private void Awake()
         {
+            // Componentes Unity
+            animator = GetComponent<Animator>();
+            navAgent = GetComponent<NavMeshAgent>();
+
+            // Sistemas gameplay
+            bossCombat = GetComponent<BossCombat>();
+            bossHealth = GetComponent<BossHealth>();
+
+            //Agente IA
             _agent = new BossAgent(gameObject, vidaMaxima)
             {
                 PlayerTransform = playerTransform
@@ -80,9 +96,11 @@ namespace BossAI
 
         private void Update()
         {
-            // Sincronizar referencia al jugador (por si cambia en runtime)
-            if (_agent != null) _agent.PlayerTransform = playerTransform;
+            // Sincronizar jugador
+            if (_agent != null)
+                _agent.PlayerTransform = playerTransform;
 
+            // Ejecutar IA
             switch (modoIA)
             {
                 case IAMode.FSMGeneralista:
@@ -93,6 +111,17 @@ namespace BossAI
                 case IAMode.ArbolDecision:
                     EjecutarArbol();
                     break;
+            }
+
+            // Actualizar animación movimiento
+            ActualizarAnimaciones();
+
+            // Comprobar muerte
+            if (EstaMuerto())
+            {
+                animator.SetTrigger("Die");
+
+                enabled = false;
             }
         }
 
@@ -123,6 +152,17 @@ namespace BossAI
                 accionDT.Execute(_agent);
         }
 
+        //  Animaciones
+        private void ActualizarAnimaciones()
+        {
+            if (animator == null || navAgent == null)
+                return;
+
+            float velocidad = navAgent.velocity.magnitude;
+
+            animator.SetFloat("Speed", velocidad);
+        }
+
         // =================================================================
         //  API Pública (llamar desde otros sistemas de juego)
         // =================================================================
@@ -132,12 +172,31 @@ namespace BossAI
         /// </summary>
         public void RecibirDanio(float cantidad)
         {
-            _agent.VidaActual = Mathf.Max(0f, _agent.VidaActual - cantidad);
-            Debug.Log($"[Boss] Vida: {_agent.VidaActual}/{_agent.VidaMaxima} " +
-                      $"({_agent.VidaPorcentaje:F0}%)");
+            _agent.VidaActual = Mathf.Max(
+                0f,
+                _agent.VidaActual - cantidad
+            );
+
+            animator.SetTrigger("Hit");
+
+            Debug.Log(
+                $"[Boss] Vida: {_agent.VidaActual}/{_agent.VidaMaxima}"
+            );
+
+            // FASE 2
+            if (_agent.VidaPorcentaje <= 50f)
+            {
+                if (bossCombat != null)
+                {
+                    bossCombat.EnterPhase2();
+                }
+            }
         }
 
         /// <summary>Devuelve true si el boss ha muerto.</summary>
-        public bool EstaMuerto() => _agent.VidaActual <= 0f;
+        public bool EstaMuerto()
+        {
+            return _agent.VidaActual <= 0f;
+        }
     }
 }

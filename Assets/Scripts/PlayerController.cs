@@ -72,10 +72,4 @@ public class PlayerController : MonoBehaviour
             animator.SetTrigger("Jump");
         }
     }
-    void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.red;
-
-        Gizmos.DrawWireSphere(groundCheck.position, groundDistance);
-    }
 }
