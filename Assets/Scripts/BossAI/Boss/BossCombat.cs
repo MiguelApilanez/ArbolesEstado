@@ -79,6 +79,21 @@ public class BossCombat : MonoBehaviour
         animator.SetTrigger("Enrage");
 
         Debug.Log("BOSS PHASE 2");
+
+        StartCoroutine(FinEnrageCoroutine());
+    }
+
+    private System.Collections.IEnumerator FinEnrageCoroutine()
+    {
+        // Espera un frame para que el Animator procese el trigger
+        yield return null;
+        // Espera a que entre en el estado Enrage
+        yield return new WaitUntil(() =>
+            animator.GetCurrentAnimatorStateInfo(0).IsName("Enrage"));
+        // Espera a que termine la animación de Enrage
+        yield return new WaitUntil(() =>
+            !animator.GetCurrentAnimatorStateInfo(0).IsName("Enrage"));
+        EndEnrage();
     }
     public bool IsEnraging()
     {

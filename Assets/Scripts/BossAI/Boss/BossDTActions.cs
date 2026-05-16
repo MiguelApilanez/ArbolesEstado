@@ -1,6 +1,6 @@
 // =====================================================================
-//  BossDTActions.cs  —  Nodos hoja (acciones) concretos del árbol
-//  para el boss 3D. Cada clase representa una decisión final del árbol.
+//  BossDTActions.cs  ï¿½  Nodos hoja (acciones) concretos del ï¿½rbol
+//  para el boss 3D. Cada clase representa una decisiï¿½n final del ï¿½rbol.
 // =====================================================================
 
 using UnityEngine;
@@ -58,11 +58,7 @@ namespace BossAI
             if (agent.NavMesh != null) agent.NavMesh.isStopped = true;
             agent.Animator?.SetTrigger(_animTrigger);
 
-            if (agent.PlayerTransform == null) return;
-            float dist = Vector3.Distance(
-                agent.Transform.position, agent.PlayerTransform.position);
-            if (dist <= _rangoAtaque)
-                agent.PlayerTransform.GetComponent<PlayerHealth>()?.TakeDamage(_danio);
+            // El daÃ±o lo aplica BossAttack.DealDamage() desde el Animation Event
         }
     }
 
@@ -82,7 +78,7 @@ namespace BossAI
         {
             if (agent.NavMesh != null) agent.NavMesh.isStopped = true;
             agent.Animator?.SetTrigger(_animTrigger);
-            // Aquí lanzarías tu proyectil, raycast, etc.
+            // Aquï¿½ lanzarï¿½as tu proyectil, raycast, etc.
             Debug.Log("[Boss DT] Ataque a distancia ejecutado.");
         }
     }
@@ -96,7 +92,7 @@ namespace BossAI
         {
             agent.Animator?.SetTrigger("enrage");
             if (agent.NavMesh != null) agent.NavMesh.speed *= 1.5f;
-            Debug.Log("[Boss DT] ¡ENRAGE activado desde árbol de decisión!");
+            Debug.Log("[Boss DT] ï¿½ENRAGE activado desde ï¿½rbol de decisiï¿½n!");
         }
     }
 }
