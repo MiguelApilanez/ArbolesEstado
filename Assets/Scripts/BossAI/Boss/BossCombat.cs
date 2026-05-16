@@ -27,18 +27,20 @@ public class BossCombat : MonoBehaviour
 
             if (randomAttack == 0)
             {
-                animator.SetTrigger("attack1");
+                Debug.Log("ATTACK 1 TRIGGER");
+
+                animator.Play("Attack1");
             }
             else
             {
-                animator.SetTrigger("attack2");
+                animator.Play("Attack2");
             }
         }
 
         // FASE 2
         else
         {
-            animator.SetTrigger("attack3");
+            animator.Play("Attack3");
         }
     }
 

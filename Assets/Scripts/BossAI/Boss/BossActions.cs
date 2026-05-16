@@ -96,7 +96,6 @@ namespace BossAI
         private readonly float _danio;
         private readonly float _rangoAtaque;
 
-        // Cooldown
         private float _cooldownAtaque = 2f;
         private float _ultimoAtaque = -999f;
 
@@ -117,7 +116,7 @@ namespace BossAI
                 agent.PlayerTransform.position
             );
 
-            // Fuera de rango
+            // Si está fuera de rango
             if (dist > _rangoAtaque)
                 return;
 
@@ -134,43 +133,31 @@ namespace BossAI
                     Quaternion.LookRotation(dir);
             }
 
-            // Detener movimiento
+            // Parar movimiento
             if (agent.NavMesh != null)
             {
                 agent.NavMesh.isStopped = true;
             }
 
-            // Cooldown
-            if (Time.time < _ultimoAtaque + _cooldownAtaque)
+            // =========================
+            // COOLDOWN ATAQUE
+            // =========================
+
+            if (Time.time < _ultimoAtaque + 2f)
                 return;
 
             _ultimoAtaque = Time.time;
 
             // =========================
-            // FASE 1
+            // LLAMAR A BOSSCOMBAT
             // =========================
 
-            if (agent.VidaPorcentaje > 50f)
+            BossCombat combat =
+                agent.GameObject.GetComponent<BossCombat>();
+
+            if (combat != null)
             {
-                int randomAttack = Random.Range(0, 2);
-
-                if (randomAttack == 0)
-                {
-                    agent.Animator?.SetTrigger("Attack1");
-                }
-                else
-                {
-                    agent.Animator?.SetTrigger("Attack2");
-                }
-            }
-
-            // =========================
-            // FASE 2
-            // =========================
-
-            else
-            {
-                agent.Animator?.SetTrigger("Attack3");
+                combat.Attack();
             }
 
             // =========================
@@ -180,7 +167,10 @@ namespace BossAI
             var playerHealth =
                 agent.PlayerTransform.GetComponent<PlayerHealth>();
 
-            playerHealth?.TakeDamage(_danio);
+            if (playerHealth != null)
+            {
+                playerHealth.TakeDamage(_danio);
+            }
         }
     }
 

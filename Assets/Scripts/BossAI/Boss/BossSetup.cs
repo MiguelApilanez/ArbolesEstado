@@ -26,7 +26,7 @@ namespace BossAI
             var idleAction = new IdleAction();
             var chaseAction = new ChaseAction();
             var patrolAction = new PatrolAction(waypoints);
-            var meleeAction = new MeleeAttackAction(danio: 20f, rangoAtaque: 2f);
+            var meleeAction = new MeleeAttackAction(danio: 20f, rangoAtaque: 4f);
             var enrageEnter = new EnrageEnterAction();
             var logPatrullar = new LogAction("Entrando en PATRULLA");
             var logPerseguir = new LogAction("Entrando en PERSECUCIÓN");
@@ -45,13 +45,26 @@ namespace BossAI
             );
 
             var estadoAtaque = new State(
-                accionesEstado: new AIAction[] { meleeAction },
-                accionesEntrada: new AIAction[] { logAtacar }
+                accionesEstado: new AIAction[] { },
+
+                accionesEntrada: new AIAction[]
+                {
+                    logAtacar,
+                    meleeAction
+                }
             );
 
             var estadoEnrage = new State(
-                accionesEstado: new AIAction[] { chaseAction, meleeAction },
-                accionesEntrada: new AIAction[] { enrageEnter, logEnrage }
+                accionesEstado: new AIAction[]
+                {
+                    chaseAction
+                },
+
+                accionesEntrada: new AIAction[]
+                {
+                    enrageEnter,
+                    logEnrage
+                }
             );
 
             // ── Condiciones ───────────────────────────────────────────
@@ -60,7 +73,7 @@ namespace BossAI
             // Jugador perdido si está a más de 20 unidades
             var perdidoCondicion = new DistanceCondition(agent, min: 20f, max: float.MaxValue);
             // Rango cuerpo a cuerpo si está a menos de 2.5 unidades
-            var meleeRangoCondicion = new DistanceCondition(agent, min: 0f, max: 2.5f);
+            var meleeRangoCondicion = new DistanceCondition(agent, min: 0f, max: 4f);
             // Fuera de rango melee si está a más de 3 unidades
             var fueraMeleeCondicion = new DistanceCondition(agent, min: 3f, max: float.MaxValue);
             // Enrage al bajar del 40% de vida
@@ -85,13 +98,28 @@ namespace BossAI
             // Ataque → Persecución (si el jugador se aleja)
             // Ataque → Enrage (si baja la vida)
             estadoAtaque.transiciones = new Transition[]
-            {
-                new Transition(estadoEnrage,      enrageCondicion),
-                new Transition(estadoPersecucion, fueraMeleeCondicion)
+{
+                // Entrar en fase Enrage
+                new Transition(estadoEnrage, enrageCondicion),
+
+                // Si el jugador se aleja
+                new Transition(estadoPersecucion, fueraMeleeCondicion),
+
+                // IMPORTANTÍSIMO:
+                // volver a persecución tras atacar
+                new Transition(
+                    estadoPersecucion,
+                    fueraMeleeCondicion
+                )
             };
 
             // Enrage → (sin salida, estado final hasta muerte del boss)
-            estadoEnrage.transiciones = new Transition[0];
+            estadoEnrage.transiciones = new Transition[]
+{
+                new Transition(estadoAtaque, meleeRangoCondicion),
+
+                new Transition(estadoPersecucion, fueraMeleeCondicion)
+            };
 
             // ── Construir la FSM ──────────────────────────────────────
             var fsm = new StateMachine { estadoInicial = estadoPatrulla };
