@@ -45,7 +45,21 @@ namespace BossAI
             );
 
             var estadoAtaque = new State(
-                accionesEstado: new AIAction[] { },
+                accionesEstado: new AIAction[]
+                {
+                },
+
+                accionesEntrada: new AIAction[]
+                {
+                    logAtacar,
+                    meleeAction
+                }
+            );
+
+            var estadoAtaqueEnrage = new State(
+                accionesEstado: new AIAction[]
+                {
+                },
 
                 accionesEntrada: new AIAction[]
                 {
@@ -77,7 +91,17 @@ namespace BossAI
             // Fuera de rango melee si está a más de 3 unidades
             var fueraMeleeCondicion = new DistanceCondition(agent, min: 3f, max: float.MaxValue);
             // Enrage al bajar del 40% de vida
-            var enrageCondicion = new HealthCondition(agent, min: 0f, max: 40f);
+            var enrageCondicion = new BoolCondition( () => 
+            { 
+                BossCombat combat = agent.GameObject.GetComponent<BossCombat>();
+
+                if (combat == null)
+                    return false;
+
+                return agent.VidaPorcentaje <= 40f
+                       && !combat.HasEnraged();
+            }
+        );
 
             // ── Transiciones ──────────────────────────────────────────
             // Patrulla → Persecución (si el jugador entra en rango)
@@ -97,28 +121,37 @@ namespace BossAI
 
             // Ataque → Persecución (si el jugador se aleja)
             // Ataque → Enrage (si baja la vida)
+
+
             estadoAtaque.transiciones = new Transition[]
-{
-                // Entrar en fase Enrage
+            {
                 new Transition(estadoEnrage, enrageCondicion),
 
-                // Si el jugador se aleja
                 new Transition(estadoPersecucion, fueraMeleeCondicion),
 
-                // IMPORTANTÍSIMO:
-                // volver a persecución tras atacar
+                new Transition(estadoPersecucion, fueraMeleeCondicion)
+            };
+
+            // Enrage → (sin salida, estado final hasta muerte del boss)
+            estadoEnrage.transiciones = new Transition[]
+{
+                new Transition(
+                    estadoAtaqueEnrage,
+                    meleeRangoCondicion
+                ),
+
                 new Transition(
                     estadoPersecucion,
                     fueraMeleeCondicion
                 )
             };
 
-            // Enrage → (sin salida, estado final hasta muerte del boss)
-            estadoEnrage.transiciones = new Transition[]
-{
-                new Transition(estadoAtaque, meleeRangoCondicion),
-
-                new Transition(estadoPersecucion, fueraMeleeCondicion)
+            estadoAtaqueEnrage.transiciones = new Transition[]
+            {
+                new Transition(
+                    estadoEnrage,
+                    fueraMeleeCondicion
+                )
             };
 
             // ── Construir la FSM ──────────────────────────────────────

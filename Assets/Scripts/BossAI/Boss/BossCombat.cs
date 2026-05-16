@@ -9,6 +9,7 @@ public class BossCombat : MonoBehaviour
     private Animator animator;
 
     private bool enraged = false;
+    private bool isEnraging = false;
 
     void Start()
     {
@@ -19,28 +20,35 @@ public class BossCombat : MonoBehaviour
 
     public void Attack()
     {
-        // FASE 1
+        // NO atacar durante Enrage
+        if (isEnraging)
+            return;
 
+        // FASE 1
         if (phase == 1)
         {
             int randomAttack = Random.Range(0, 2);
 
             if (randomAttack == 0)
             {
-                Debug.Log("ATTACK 1 TRIGGER");
+                animator.SetTrigger("Attack1");
 
-                animator.Play("Attack1");
+                Debug.Log("ATTACK 1");
             }
             else
             {
-                animator.Play("Attack2");
+                animator.SetTrigger("Attack2");
+
+                Debug.Log("ATTACK 2");
             }
         }
 
         // FASE 2
         else
         {
-            animator.Play("Attack3");
+            animator.SetTrigger("Attack3");
+
+            Debug.Log("ATTACK 3");
         }
     }
 
@@ -54,15 +62,44 @@ public class BossCombat : MonoBehaviour
     }
     public void EnterPhase2()
     {
+        Debug.Log("PHASE = " + phase);
         enraged = true;
 
         phase = 2;
 
+        isEnraging = true;
+
+        UnityEngine.AI.NavMeshAgent agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+
+        if (agent != null)
+        {
+            agent.isStopped = true;
+        }
+
         animator.SetTrigger("Enrage");
 
         Debug.Log("BOSS PHASE 2");
+    }
+    public bool IsEnraging()
+    {
+        return isEnraging;
+    }
 
-        // Buffs
-        GetComponent<UnityEngine.AI.NavMeshAgent>().speed = 5f;
+    public void EndEnrage()
+    {
+        isEnraging = false;
+
+        UnityEngine.AI.NavMeshAgent agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+
+        if (agent != null)
+        {
+            agent.isStopped = false;
+
+            agent.speed = 5f;
+        }
+    }
+    public bool HasEnraged()
+    {
+        return enraged;
     }
 }

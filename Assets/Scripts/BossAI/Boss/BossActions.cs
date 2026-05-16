@@ -157,6 +157,9 @@ namespace BossAI
 
             if (combat != null)
             {
+                if (combat.IsEnraging())
+                    return;
+
                 combat.Attack();
             }
 
