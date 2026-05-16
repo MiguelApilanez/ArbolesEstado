@@ -187,7 +187,7 @@ namespace BossAI
         public override void Execute(BossAgent agent)
         {
             Debug.Log("[Boss] ¡enrage activado!");
-            agent.Animator?.SetTrigger("enrage");
+            agent.Animator?.SetTrigger("Enrage");
 
             // Aumentar velocidad del NavMesh al entrar en enrage
             if (agent.NavMesh != null)

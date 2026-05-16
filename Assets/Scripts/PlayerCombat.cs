@@ -1,3 +1,4 @@
+using BossAI;
 using UnityEngine;
 
 public class PlayerCombat : MonoBehaviour
@@ -9,7 +10,7 @@ public class PlayerCombat : MonoBehaviour
     public Transform attackPoint;
 
     [Header("Cooldown")]
-    public float attackCooldown = 1f;
+    public float attackCooldown = 0.6f;
 
     private float nextAttackTime;
 
@@ -34,28 +35,36 @@ public class PlayerCombat : MonoBehaviour
 
     void Attack()
     {
+        // Animación
         animator.SetTrigger("Attack");
 
-        Collider[] hitEnemies = Physics.OverlapSphere(attackPoint.position, attackRange, enemyLayer);
+        // Detectar enemigos
+        Collider[] hitEnemies = Physics.OverlapSphere(
+            attackPoint.position,
+            attackRange,
+            enemyLayer
+        );
 
         foreach (Collider enemy in hitEnemies)
         {
-            BossHealth bossHealth = enemy.GetComponent<BossHealth>();
+            BossController boss = enemy.GetComponent<BossController>();
 
-            if (bossHealth != null)
+            if (boss != null)
             {
-                bossHealth.TakeDamage(attackDamage);
+                boss.RecibirDanio(attackDamage);
+
+                Debug.Log("Golpeando al boss: -" + attackDamage + " HP");
             }
         }
-    }
 
-    void OnDrawGizmosSelected()
-    {
-        if (attackPoint == null)
-            return;
+        void OnDrawGizmosSelected()
+        {
+            if (attackPoint == null)
+                return;
 
-        Gizmos.color = Color.red;
+            Gizmos.color = Color.red;
 
-        Gizmos.DrawWireSphere(attackPoint.position, attackRange);
+            Gizmos.DrawWireSphere(attackPoint.position, attackRange);
+        }
     }
 }

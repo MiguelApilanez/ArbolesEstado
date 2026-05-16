@@ -1,73 +1,38 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.AI;
 
 public class BossHealth : MonoBehaviour
 {
-    public int maxHealth = 300;
+    [Header("Vida")]
+    public float maxHealth = 300f;
 
-    public int currentHealth;
+    public float currentHealth;
 
     [Header("UI")]
     public Slider healthSlider;
-
-    private Animator animator;
-
-    private NavMeshAgent agent;
-
-    private MonoBehaviour bossController;
 
     void Start()
     {
         currentHealth = maxHealth;
 
-        animator = GetComponent<Animator>();
-
-        agent = GetComponent<NavMeshAgent>();
-
-        bossController = GetComponent<MonoBehaviour>();
-
-        UpdateUI();
+        UpdateHealthBar();
     }
-    public void TakeDamage(int damage)
+
+    public void TakeDamage(float damage)
     {
         currentHealth -= damage;
 
         currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
 
-        UpdateUI();
+        UpdateHealthBar();
 
-        animator.SetTrigger("Hit");
-
-        if (currentHealth <= 0)
-        {
-            Die();
-        }
+        Debug.Log("[Boss] Vida: " + currentHealth + "/" + maxHealth);
     }
-    void Die()
-    {
-        animator.SetTrigger("Die");
-
-        if (agent != null)
-        {
-            agent.isStopped = true;
-        }
-
-        if (bossController != null)
-        {
-            bossController.enabled = false;
-        }
-
-        Debug.Log("BOSS DEAD");
-
-        Destroy(gameObject, 5f);
-    }
-
-    void UpdateUI()
+    void UpdateHealthBar()
     {
         if (healthSlider != null)
         {
-            healthSlider.value = currentHealth;
+            healthSlider.value = currentHealth / maxHealth;
         }
     }
 }

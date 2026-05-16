@@ -172,24 +172,31 @@ namespace BossAI
         /// </summary>
         public void RecibirDanio(float cantidad)
         {
-            _agent.VidaActual = Mathf.Max(
-                0f,
-                _agent.VidaActual - cantidad
-            );
+            // Vida IA
+            _agent.VidaActual = Mathf.Max(0f, _agent.VidaActual - cantidad);
 
+            // Vida visual/UI
+            if (bossHealth != null)
+            {
+                bossHealth.TakeDamage(cantidad);
+            }
+
+            // Animación hit
             animator.SetTrigger("Hit");
 
-            Debug.Log(
-                $"[Boss] Vida: {_agent.VidaActual}/{_agent.VidaMaxima}"
-            );
+            Debug.Log($"[Boss] Vida: {_agent.VidaActual}/{_agent.VidaMaxima}");
 
-            // FASE 2
-            if (_agent.VidaPorcentaje <= 50f)
+            if (_agent.VidaPorcentaje <= 40f)
             {
                 if (bossCombat != null)
                 {
                     bossCombat.EnterPhase2();
                 }
+            }
+
+            if (_agent.VidaActual <= 0f)
+            {
+                animator.SetTrigger("Die");
             }
         }
 
