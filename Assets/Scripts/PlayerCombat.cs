@@ -13,7 +13,6 @@ public class PlayerCombat : MonoBehaviour
     public float attackCooldown = 0.6f;
 
     private float nextAttackTime;
-
     private Animator animator;
 
     void Start()
@@ -23,48 +22,31 @@ public class PlayerCombat : MonoBehaviour
 
     void Update()
     {
-        if (Time.time >= nextAttackTime)
+        if (Time.time >= nextAttackTime && Input.GetMouseButtonDown(0))
         {
-            if (Input.GetMouseButtonDown(0))
-            {
-                Attack();
-                nextAttackTime = Time.time + attackCooldown;
-            }
+            Attack();
+            nextAttackTime = Time.time + attackCooldown;
         }
     }
 
     void Attack()
     {
-        // Animación
         animator.SetTrigger("Attack");
 
-        // Detectar enemigos
-        Collider[] hitEnemies = Physics.OverlapSphere(
-            attackPoint.position,
-            attackRange,
-            enemyLayer
-        );
+        Collider[] hitEnemies = Physics.OverlapSphere(attackPoint.position, attackRange, enemyLayer);
 
         foreach (Collider enemy in hitEnemies)
         {
             BossController boss = enemy.GetComponent<BossController>();
-
             if (boss != null)
-            {
                 boss.RecibirDanio(attackDamage);
-
-                Debug.Log("Golpeando al boss: -" + attackDamage + " HP");
-            }
         }
+    }
 
-        void OnDrawGizmosSelected()
-        {
-            if (attackPoint == null)
-                return;
-
-            Gizmos.color = Color.red;
-
-            Gizmos.DrawWireSphere(attackPoint.position, attackRange);
-        }
+    void OnDrawGizmosSelected()
+    {
+        if (attackPoint == null) return;
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(attackPoint.position, attackRange);
     }
 }

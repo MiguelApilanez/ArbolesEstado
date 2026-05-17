@@ -1,29 +1,10 @@
-﻿// =====================================================================
-//  BossController.cs  —  MonoBehaviour principal del boss
-//  Conecta la FSM generalista, la FSM jerárquica y el árbol de decisión
-// =====================================================================
-
 using UnityEngine;
 using UnityEngine.AI;
 
 namespace BossAI
 {
-    /// <summary>
-    /// Componente principal del boss 3D.
-    /// 
-    /// Pon este script en el GameObject del boss junto con:
-    ///   - NavMeshAgent
-    ///   - Animator
-    /// 
-    /// Asigna en el Inspector:
-    ///   - playerTransform
-    ///   - waypoints (para la patrulla)
-    ///   - vida máxima
-    ///   - modo de IA (FSM generalista / FSM jerárquica / árbol de decisión)
-    /// </summary>
     public class BossController : MonoBehaviour
     {
-        // ── Inspector ────────────────────────────────────────────────
         [Header("Referencias")]
         public Transform playerTransform;
         public Transform[] waypoints;
@@ -38,36 +19,28 @@ namespace BossAI
         {
             FSMGeneralista,
             FSMJerarquica,
-            ArbolDecision
+            ArbolDecision,
+            ArbolComportamiento
         }
-        // ── Componentes ──────────────────────────────────────────────
 
         private Animator animator;
         private NavMeshAgent navAgent;
-
         private BossCombat bossCombat;
         private BossHealth bossHealth;
 
-        // ── Internos ─────────────────────────────────────────────────
         private BossAgent _agent;
         private StateMachine _fsm;
         private DecisionTreeNode _arbolDecision;
-
-        // =================================================================
-        //  Unity Lifecycle
-        // =================================================================
+        private BTNode _behaviorTree;
+        private bool _muriendo = false;
 
         private void Awake()
         {
-            // Componentes Unity
-            animator = GetComponent<Animator>();
-            navAgent = GetComponent<NavMeshAgent>();
-
-            // Sistemas gameplay
+            animator   = GetComponent<Animator>();
+            navAgent   = GetComponent<NavMeshAgent>();
             bossCombat = GetComponent<BossCombat>();
             bossHealth = GetComponent<BossHealth>();
 
-            //Agente IA
             _agent = new BossAgent(gameObject, vidaMaxima)
             {
                 PlayerTransform = playerTransform
@@ -91,16 +64,18 @@ namespace BossAI
                 case IAMode.ArbolDecision:
                     _arbolDecision = BossSetup.CrearArbolDecision(_agent);
                     break;
+
+                case IAMode.ArbolComportamiento:
+                    _behaviorTree = BossSetup.CrearBehaviorTree(_agent, waypoints);
+                    break;
             }
         }
 
         private void Update()
         {
-            // Sincronizar jugador
             if (_agent != null)
                 _agent.PlayerTransform = playerTransform;
 
-            // Ejecutar IA
             switch (modoIA)
             {
                 case IAMode.FSMGeneralista:
@@ -109,25 +84,39 @@ namespace BossAI
                     break;
 
                 case IAMode.ArbolDecision:
-                    EjecutarArbol();
+                    EjecutarArbolDecision();
+                    break;
+
+                case IAMode.ArbolComportamiento:
+                    EjecutarBT();
                     break;
             }
 
-            // Actualizar animación movimiento
             ActualizarAnimaciones();
 
-            // Comprobar muerte
-            if (EstaMuerto())
-            {
-                animator.SetTrigger("Die");
-
-                enabled = false;
-            }
+            if (EstaMuerto() && !_muriendo)
+                StartCoroutine(SecuenciaMuerte());
         }
 
-        // =================================================================
-        //  Ejecución FSM
-        // =================================================================
+        private System.Collections.IEnumerator SecuenciaMuerte()
+        {
+            _muriendo = true;
+            enabled = false;
+
+            if (navAgent != null)
+            {
+                navAgent.isStopped = true;
+                navAgent.enabled = false;
+            }
+
+            if (bossCombat != null) bossCombat.enabled = false;
+
+            animator?.SetTrigger("Die");
+
+            yield return new WaitForSeconds(3f);
+
+            gameObject.SetActive(false);
+        }
 
         private void EjecutarFSM()
         {
@@ -138,72 +127,43 @@ namespace BossAI
                 accion.Execute(_agent);
         }
 
-        // =================================================================
-        //  Ejecución Árbol de Decisión
-        // =================================================================
-
-        private void EjecutarArbol()
+        private void EjecutarArbolDecision()
         {
             if (_arbolDecision == null) return;
 
-            DecisionTreeNode nodoResultado = _arbolDecision.Evaluate();
-
-            if (nodoResultado is DTActionNode accionDT)
+            DecisionTreeNode nodo = _arbolDecision.Evaluate();
+            if (nodo is DTActionNode accionDT)
                 accionDT.Execute(_agent);
         }
 
-        //  Animaciones
+        private void EjecutarBT()
+        {
+            _behaviorTree?.Execute(_agent);
+        }
+
         private void ActualizarAnimaciones()
         {
-            if (animator == null || navAgent == null)
-                return;
-
-            float velocidad = navAgent.velocity.magnitude;
-
-            animator.SetFloat("Speed", velocidad);
+            if (animator == null || navAgent == null) return;
+            animator.SetFloat("Speed", navAgent.velocity.magnitude);
         }
 
-        // =================================================================
-        //  API Pública (llamar desde otros sistemas de juego)
-        // =================================================================
-
-        /// <summary>
-        /// Aplica daño al boss. Llamar desde proyectiles, hitboxes, etc.
-        /// </summary>
         public void RecibirDanio(float cantidad)
         {
-            // Vida IA
+            if (_agent == null) return;
+
             _agent.VidaActual = Mathf.Max(0f, _agent.VidaActual - cantidad);
+            _agent.WasHit = true;
 
-            // Vida visual/UI
-            if (bossHealth != null)
-            {
-                bossHealth.TakeDamage(cantidad);
-            }
+            bossHealth?.TakeDamage(cantidad);
+            animator?.SetTrigger("Hit");
 
-            // Animación hit
-            animator.SetTrigger("Hit");
-
-            Debug.Log($"[Boss] Vida: {_agent.VidaActual}/{_agent.VidaMaxima}");
-
-            if (_agent.VidaPorcentaje <= 40f)
-            {
-                if (bossCombat != null)
-                {
-                    bossCombat.EnterPhase2();
-                }
-            }
+            if (_agent.VidaPorcentaje <= 40f && bossCombat != null && !bossCombat.HasEnraged())
+                bossCombat.EnterPhase2();
 
             if (_agent.VidaActual <= 0f)
-            {
-                animator.SetTrigger("Die");
-            }
+                animator?.SetTrigger("Die");
         }
 
-        /// <summary>Devuelve true si el boss ha muerto.</summary>
-        public bool EstaMuerto()
-        {
-            return _agent.VidaActual <= 0f;
-        }
+        public bool EstaMuerto() => _agent != null && _agent.VidaActual <= 0f;
     }
 }

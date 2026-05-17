@@ -15,15 +15,20 @@ public class PlayerController : MonoBehaviour
     public float groundDistance = 0.4f;
     public LayerMask groundMask;
 
+    [Header("Referencia Cámara")]
+    public Camera cam;
+
     private Rigidbody rb;
     private Animator animator;
-
     private bool isGrounded;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
+
+        if (cam == null)
+            cam = Camera.main;
     }
 
     void Update()
@@ -33,42 +38,34 @@ public class PlayerController : MonoBehaviour
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
 
-        Vector3 move = new Vector3(x, 0f, z).normalized;
+        Vector3 camForward = cam.transform.forward;
+        Vector3 camRight = cam.transform.right;
+        camForward.y = 0f; camForward.Normalize();
+        camRight.y = 0f; camRight.Normalize();
+
+        Vector3 move = (camForward * z + camRight * x).normalized;
 
         bool isRunning = Input.GetKey(KeyCode.LeftShift);
-
         float currentSpeed = isRunning ? runSpeed : walkSpeed;
 
         if (move.magnitude >= 0.1f)
         {
-            Vector3 movement = move * currentSpeed * Time.deltaTime;
-
-            transform.position += movement;
-
+            transform.position += move * currentSpeed * Time.deltaTime;
             Quaternion targetRotation = Quaternion.LookRotation(move);
-
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
-        if (move.magnitude == 0)
-        {
+        if (move.magnitude == 0f)
             animator.SetFloat("Speed", 0f);
-        }
         else if (isRunning)
-        {
             animator.SetFloat("Speed", 1f);
-        }
         else
-        {
             animator.SetFloat("Speed", 0.5f);
-        }
 
         if (Input.GetButtonDown("Jump") && isGrounded)
         {
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-
             animator.SetTrigger("Jump");
         }
     }

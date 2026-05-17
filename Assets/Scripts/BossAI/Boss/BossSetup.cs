@@ -1,194 +1,156 @@
-﻿// =====================================================================
-//  BossSetup.cs  —  Fábrica que conecta todos los sistemas del boss
-//  Aquí se definen los estados, transiciones y el árbol de decisión
-//  MODIFICA ESTE ARCHIVO para personalizar el comportamiento del boss
-// =====================================================================
-
 using UnityEngine;
 
 namespace BossAI
 {
-    /// <summary>
-    /// Clase estática que construye las tres variantes de IA del boss.
-    /// Separa la configuración del comportamiento del código de ejecución.
-    /// </summary>
     public static class BossSetup
     {
-        // =================================================================
-        //  FSM GENERALISTA
-        //  Estados: Patrulla → Persecución → Ataque → Enrage
-        //  Reglas sencillas sin jerarquía
-        // =================================================================
-
-        public static StateMachine CrearFSMGeneralista(BossAgent agent,Transform[] waypoints)
+        public static StateMachine CrearFSMGeneralista(BossAgent agent, Transform[] waypoints)
         {
-            // ── Acciones reutilizables ────────────────────────────────
-            var idleAction = new IdleAction();
-            var chaseAction = new ChaseAction();
-            var patrolAction = new PatrolAction(waypoints);
-            var meleeAction = new MeleeAttackAction(danio: 20f, rangoAtaque: 4f);
-            var enrageEnter = new EnrageEnterAction();
-            var logPatrullar = new LogAction("Entrando en PATRULLA");
-            var logPerseguir = new LogAction("Entrando en PERSECUCIÓN");
-            var logAtacar = new LogAction("Entrando en ATAQUE");
-            var logEnrage = new LogAction("Entrando en ENRAGE");
+            var idleAction      = new IdleAction();
+            var chaseAction     = new ChaseAction();
+            var patrolAction    = new PatrolAction(waypoints);
+            var meleeAction     = new MeleeAttackAction(danio: 20f, rangoAtaque: 4f);
+            var meleeEnrage     = new MeleeAttackAction(danio: 35f, rangoAtaque: 4f);
+            var rangedAction    = new RangedAttackAction(danio: 15f, rangoMaximo: 10f);
+            var counterAction   = new CounterAttackAction();
+            var enrageEnter     = new EnrageEnterAction();
+            var stopNav         = new StopNavAction();
+            var resetHit        = new ResetHitFlagAction();
 
-            // ── Crear estados (sin transiciones todavía) ──────────────
+            var logIdle         = new LogAction("Entrando en IDLE");
+            var logPatrulla     = new LogAction("Entrando en PATRULLA");
+            var logPersecucion  = new LogAction("Entrando en PERSECUCION");
+            var logMelee        = new LogAction("Entrando en ATAQUE MELEE");
+            var logDistancia    = new LogAction("Entrando en ATAQUE DISTANCIA");
+            var logContra       = new LogAction("Entrando en CONTRAATAQUE");
+            var logEnrage       = new LogAction("Entrando en ENRAGE - FASE 2");
+            var logAtaqueEnrage = new LogAction("Entrando en ATAQUE ENRAGE");
+
+            var estadoIdle = new State(
+                accionesEstado:  new AIAction[] { idleAction },
+                accionesEntrada: new AIAction[] { logIdle }
+            );
+
             var estadoPatrulla = new State(
-                accionesEstado: new AIAction[] { patrolAction },
-                accionesEntrada: new AIAction[] { logPatrullar }
+                accionesEstado:  new AIAction[] { patrolAction },
+                accionesEntrada: new AIAction[] { logPatrulla }
             );
 
             var estadoPersecucion = new State(
-                accionesEstado: new AIAction[] { chaseAction },
-                accionesEntrada: new AIAction[] { logPerseguir }
+                accionesEstado:  new AIAction[] { chaseAction },
+                accionesEntrada: new AIAction[] { logPersecucion },
+                accionesSalida:  new AIAction[] { stopNav }
             );
 
-            var estadoAtaque = new State(
-                accionesEstado: new AIAction[]
-                {
-                },
-
-                accionesEntrada: new AIAction[]
-                {
-                    logAtacar,
-                    meleeAction
-                }
+            var estadoAtaqueMelee = new State(
+                accionesEstado:  new AIAction[] { meleeAction },
+                accionesEntrada: new AIAction[] { logMelee }
             );
 
-            var estadoAtaqueEnrage = new State(
-                accionesEstado: new AIAction[]
-                {
-                },
+            var estadoAtaqueDistancia = new State(
+                accionesEstado:  new AIAction[] { rangedAction },
+                accionesEntrada: new AIAction[] { stopNav, logDistancia }
+            );
 
-                accionesEntrada: new AIAction[]
-                {
-                    logAtacar,
-                    meleeAction
-                }
+            var estadoContraataque = new State(
+                accionesEstado:  new AIAction[] { counterAction },
+                accionesEntrada: new AIAction[] { logContra },
+                accionesSalida:  new AIAction[] { resetHit }
             );
 
             var estadoEnrage = new State(
-                accionesEstado: new AIAction[]
-                {
-                    chaseAction
-                },
-
-                accionesEntrada: new AIAction[]
-                {
-                    enrageEnter,
-                    logEnrage
-                }
+                accionesEstado:  new AIAction[] { chaseAction },
+                accionesEntrada: new AIAction[] { enrageEnter, logEnrage }
             );
 
-            // ── Condiciones ───────────────────────────────────────────
-            // Jugador detectado si está a menos de 15 unidades
-            var detectadoCondicion = new DistanceCondition(agent, min: 0f, max: 15f);
-            // Jugador perdido si está a más de 20 unidades
-            var perdidoCondicion = new DistanceCondition(agent, min: 20f, max: float.MaxValue);
-            // Rango cuerpo a cuerpo si está a menos de 2.5 unidades
-            var meleeRangoCondicion = new DistanceCondition(agent, min: 0f, max: 4f);
-            // Fuera de rango melee si está a más de 3 unidades
-            var fueraMeleeCondicion = new DistanceCondition(agent, min: 3f, max: float.MaxValue);
-            // Enrage al bajar del 40% de vida
-            var enrageCondicion = new BoolCondition( () => 
-            { 
-                BossCombat combat = agent.GameObject.GetComponent<BossCombat>();
+            var estadoAtaqueEnrage = new State(
+                accionesEstado:  new AIAction[] { meleeEnrage },
+                accionesEntrada: new AIAction[] { logAtaqueEnrage }
+            );
 
-                if (combat == null)
-                    return false;
+            var detectado        = new DistanceCondition(agent,  0f,         15f);
+            var perdido          = new DistanceCondition(agent, 20f, float.MaxValue);
+            var enMelee          = new DistanceCondition(agent,  0f,          4f);
+            var fueraMelee       = new DistanceCondition(agent,  4f, float.MaxValue);
+            var enMedio          = new DistanceCondition(agent,  4f,         10f);
+            var fueraMedio       = new DistanceCondition(agent, 10f, float.MaxValue);
 
-                return agent.VidaPorcentaje <= 40f
-                       && !combat.HasEnraged();
-            }
-        );
+            var enrageCondicion = new BoolCondition(() =>
+            {
+                BossCombat c = agent.GameObject.GetComponent<BossCombat>();
+                return c != null && agent.VidaPorcentaje <= 40f && !c.HasEnraged();
+            });
 
-            // ── Transiciones ──────────────────────────────────────────
-            // Patrulla → Persecución (si el jugador entra en rango)
+            var wasHitCondicion    = new BoolCondition(() => agent.WasHit);
+            var notWasHitCondicion = new BoolCondition(() => !agent.WasHit);
+            var siempre            = new BoolCondition(() => true);
+
+            estadoIdle.transiciones = new Transition[]
+            {
+                new Transition(estadoPatrulla, siempre)
+            };
+
             estadoPatrulla.transiciones = new Transition[]
             {
-                new Transition(estadoPersecucion, detectadoCondicion)
+                new Transition(estadoEnrage,      enrageCondicion),
+                new Transition(estadoPersecucion, detectado)
             };
 
-            // Persecución → Ataque (si llega al rango melee)
-            // Persecución → Patrulla (si pierde al jugador)
             estadoPersecucion.transiciones = new Transition[]
             {
-                new Transition(estadoEnrage,     enrageCondicion),
-                new Transition(estadoAtaque,     meleeRangoCondicion),
-                new Transition(estadoPatrulla,   perdidoCondicion)
+                new Transition(estadoEnrage,          enrageCondicion),
+                new Transition(estadoContraataque,    wasHitCondicion),
+                new Transition(estadoAtaqueMelee,     enMelee),
+                new Transition(estadoAtaqueDistancia, enMedio),
+                new Transition(estadoPatrulla,        perdido)
             };
 
-            // Ataque → Persecución (si el jugador se aleja)
-            // Ataque → Enrage (si baja la vida)
-
-
-            estadoAtaque.transiciones = new Transition[]
+            estadoAtaqueMelee.transiciones = new Transition[]
             {
-                new Transition(estadoEnrage, enrageCondicion),
-
-                new Transition(estadoPersecucion, fueraMeleeCondicion),
-
-                new Transition(estadoPersecucion, fueraMeleeCondicion)
+                new Transition(estadoEnrage,          enrageCondicion),
+                new Transition(estadoAtaqueDistancia, enMedio),
+                new Transition(estadoPersecucion,     fueraMelee)
             };
 
-            // Enrage → (sin salida, estado final hasta muerte del boss)
-            estadoEnrage.transiciones = new Transition[]
-{
-                new Transition(
-                    estadoAtaqueEnrage,
-                    meleeRangoCondicion
-                ),
+            estadoAtaqueDistancia.transiciones = new Transition[]
+            {
+                new Transition(estadoEnrage,      enrageCondicion),
+                new Transition(estadoAtaqueMelee, enMelee),
+                new Transition(estadoPersecucion, fueraMedio)
+            };
 
-                new Transition(
-                    estadoPersecucion,
-                    fueraMeleeCondicion
-                )
+            estadoContraataque.transiciones = new Transition[]
+            {
+                new Transition(estadoPersecucion, notWasHitCondicion)
+            };
+
+            estadoEnrage.transiciones = new Transition[]
+            {
+                new Transition(estadoAtaqueEnrage, enMelee),
+                new Transition(estadoPersecucion,  fueraMelee)
             };
 
             estadoAtaqueEnrage.transiciones = new Transition[]
             {
-                new Transition(
-                    estadoEnrage,
-                    fueraMeleeCondicion
-                )
+                new Transition(estadoEnrage, fueraMelee)
             };
 
-            // ── Construir la FSM ──────────────────────────────────────
-            var fsm = new StateMachine { estadoInicial = estadoPatrulla };
-            return fsm;
+            return new StateMachine { estadoInicial = estadoIdle };
         }
 
-        // =================================================================
-        //  FSM JERÁRQUICA
-        //  Estructura:
-        //    [Raíz]
-        //      ├── [Normal]
-        //      │     ├── Patrulla
-        //      │     └── Persecución
-        //      └── [Enrage]
-        //            ├── PersecuciónEnrage
-        //            └── AtaqueEnrage
-        //
-        //  Las transiciones globales (ej: enrage) se ponen en el padre.
-        // =================================================================
-
-        public static StateMachine CrearFSMJerarquica(BossAgent agent,
-                                                       Transform[] waypoints)
+        public static StateMachine CrearFSMJerarquica(BossAgent agent, Transform[] waypoints)
         {
-            var chaseAction = new ChaseAction();
+            var chaseAction  = new ChaseAction();
             var patrolAction = new PatrolAction(waypoints);
-            var meleeAction = new MeleeAttackAction(danio: 30f, rangoAtaque: 2f);
-            var enrageEnter = new EnrageEnterAction();
+            var meleeAction  = new MeleeAttackAction(danio: 30f, rangoAtaque: 2f);
+            var enrageEnter  = new EnrageEnterAction();
 
-            // ── Estados padre ─────────────────────────────────────────
-            var estadoRaiz = new HierarchicalState();   // estado raíz sin acciones
+            var estadoRaiz   = new HierarchicalState();
             var estadoNormal = new HierarchicalState(estadoPadre: estadoRaiz);
             var estadoEnrage = new HierarchicalState(
                 accionesEntrada: new AIAction[] { enrageEnter },
                 estadoPadre: estadoRaiz);
 
-            // ── Estados hoja del grupo Normal ─────────────────────────
             var estadoPatrulla = new HierarchicalState(
                 accionesEstado: new AIAction[] { patrolAction },
                 estadoPadre: estadoNormal);
@@ -197,7 +159,6 @@ namespace BossAI
                 accionesEstado: new AIAction[] { chaseAction },
                 estadoPadre: estadoNormal);
 
-            // ── Estados hoja del grupo Enrage ─────────────────────────
             var estadoEnrageChase = new HierarchicalState(
                 accionesEstado: new AIAction[] { chaseAction },
                 estadoPadre: estadoEnrage);
@@ -206,22 +167,17 @@ namespace BossAI
                 accionesEstado: new AIAction[] { meleeAction },
                 estadoPadre: estadoEnrage);
 
-            // ── Condiciones ───────────────────────────────────────────
-            var detectado = new DistanceCondition(agent, 0f, 15f);
-            var perdido = new DistanceCondition(agent, 20f, float.MaxValue);
-            var enEnrage = new HealthCondition(agent, 0f, 40f);
-            var enMeleeRango = new DistanceCondition(agent, 0f, 2.5f);
-            var fueraMeleeRango = new DistanceCondition(agent, 3f, float.MaxValue);
+            var detectado       = new DistanceCondition(agent,  0f,         15f);
+            var perdido         = new DistanceCondition(agent, 20f, float.MaxValue);
+            var enEnrage        = new HealthCondition(agent,    0f,         40f);
+            var enMeleeRango    = new DistanceCondition(agent,  0f,          2.5f);
+            var fueraMeleeRango = new DistanceCondition(agent,  3f, float.MaxValue);
 
-            // ── Transiciones por estado ───────────────────────────────
-
-            // La transición global de enrage va en el padre Normal
             estadoNormal.transiciones = new Transition[]
             {
                 new Transition(estadoEnrageChase, enEnrage)
             };
 
-            // Transiciones locales en los hijos de Normal
             estadoPatrulla.transiciones = new Transition[]
             {
                 new Transition(estadoPersecucion, detectado)
@@ -229,11 +185,10 @@ namespace BossAI
 
             estadoPersecucion.transiciones = new Transition[]
             {
-                new Transition(estadoAtaqueProxy(estadoEnrageAtaque), enMeleeRango),
-                new Transition(estadoPatrulla,                         perdido)
+                new Transition(estadoEnrageAtaque, enMeleeRango),
+                new Transition(estadoPatrulla,     perdido)
             };
 
-            // Transiciones dentro del grupo Enrage
             estadoEnrageChase.transiciones = new Transition[]
             {
                 new Transition(estadoEnrageAtaque, enMeleeRango)
@@ -244,76 +199,86 @@ namespace BossAI
                 new Transition(estadoEnrageChase, fueraMeleeRango)
             };
 
-            // ── Construir la HSM ──────────────────────────────────────
-            var hsm = new HierarchicalStateMachine
-            {
-                estadoInicial = estadoPatrulla
-            };
-            return hsm;
+            return new HierarchicalStateMachine { estadoInicial = estadoPatrulla };
         }
 
-        // Helper para evitar referencia circular en el setup inline
-        private static HierarchicalState estadoAtaqueProxy(HierarchicalState destino) => destino;
+        public static BTNode CrearBehaviorTree(BossAgent agent, Transform[] waypoints)
+        {
+            var idle      = new BTIdleLeaf();
+            var patrol    = new BTPatrolLeaf(waypoints);
+            var chase     = new BTChaseLeaf();
+            var melee     = new BTMeleeLeaf(danio: 20f);
+            var melee2    = new BTMeleePhase2Leaf(danio: 35f);
+            var ranged    = new BTRangedLeaf(danio: 15f);
+            var counter   = new BTCounterLeaf();
+            var enrage    = new BTEnrageLeaf();
 
-        // =================================================================
-        //  ÁRBOL DE DECISIÓN
-        //  Estructura lógica:
-        //
-        //  ¿Enrage (vida < 40%)?
-        //    Sí → ¿En rango melee?
-        //           Sí → AtaqueEnrage
-        //           No → PerseguirEnrage
-        //    No → ¿Jugador detectado (< 15u)?
-        //           Sí → ¿En rango melee?
-        //                  Sí → AtaqueMelee
-        //                  No → Perseguir
-        //           No → Patrullar / Idle
-        // =================================================================
+            var condEnMelee = new BTCondition(a =>
+                a.PlayerTransform != null &&
+                Vector3.Distance(a.Transform.position, a.PlayerTransform.position) <= 4f);
+
+            var condEnMedio = new BTCondition(a =>
+                a.PlayerTransform != null &&
+                Vector3.Distance(a.Transform.position, a.PlayerTransform.position) is > 4f and <= 10f);
+
+            var condDetectado = new BTCondition(a =>
+                a.PlayerTransform != null &&
+                Vector3.Distance(a.Transform.position, a.PlayerTransform.position) <= 15f);
+
+            var condEnPhase2 = new BTCondition(a =>
+                a.GameObject.GetComponent<BossCombat>()?.HasEnraged() ?? false);
+
+            var condActivarEnrage = new BTCondition(a =>
+            {
+                BossCombat c = a.GameObject.GetComponent<BossCombat>();
+                return c != null && a.VidaPorcentaje <= 40f && !c.HasEnraged();
+            });
+
+            var condWasHit = new BTCondition(a => a.WasHit);
+
+            var meleeCooldown  = new BTCooldownDecorator(melee,  2f);
+            var rangedCooldown = new BTCooldownDecorator(ranged, 3f);
+            var melee2Cooldown = new BTCooldownDecorator(melee2, 1.5f);
+
+            var fase2Combate = new BTSelector(
+                new BTSequence(condEnMelee, melee2Cooldown),
+                chase
+            );
+
+            return new BTSelector(
+                new BTSequence(condActivarEnrage, enrage),
+                new BTSequence(condEnPhase2, fase2Combate),
+                new BTSequence(condWasHit, counter),
+                new BTSequence(condEnMelee, meleeCooldown),
+                new BTSequence(condEnMedio, rangedCooldown),
+                new BTSequence(condDetectado, chase),
+                patrol
+            );
+        }
 
         public static DecisionTreeNode CrearArbolDecision(BossAgent agent)
         {
-            // ── Nodos hoja (acciones) ─────────────────────────────────
-            var nodoIdle = new IdleDTAction();
-            var nodoPerseguir = new ChaseDTAction();
-            var nodoAtaqueMelee = new MeleeAttackDTAction(danio: 20f, rangoAtaque: 2f);
+            var nodoIdle            = new IdleDTAction();
+            var nodoPerseguir       = new ChaseDTAction();
+            var nodoAtaqueMelee     = new MeleeAttackDTAction(danio: 20f, rangoAtaque: 2f);
             var nodoAtaqueDistancia = new RangedAttackDTAction();
-            var nodoEnrage = new EnrageDTAction();
+            var nodoEnrage          = new EnrageDTAction();
 
-            // ── Condiciones ───────────────────────────────────────────
-            bool EstaEnMelee() => agent.PlayerTransform != null &&
-                                     UnityEngine.Vector3.Distance(
-                                         agent.Transform.position,
-                                         agent.PlayerTransform.position) <= 2.5f;
-
+            bool EstaEnMelee()   => agent.PlayerTransform != null &&
+                Vector3.Distance(agent.Transform.position, agent.PlayerTransform.position) <= 2.5f;
             bool EstaDetectado() => agent.PlayerTransform != null &&
-                                     UnityEngine.Vector3.Distance(
-                                         agent.Transform.position,
-                                         agent.PlayerTransform.position) <= 15f;
+                Vector3.Distance(agent.Transform.position, agent.PlayerTransform.position) <= 15f;
+            bool EstaEnEnrage()  => agent.VidaPorcentaje <= 40f;
 
-            bool EstaEnEnrage() => agent.VidaPorcentaje <= 40f;
-
-            // ── Construir el árbol de dentro hacia afuera ─────────────
-
-            // Subárbol: jugador detectado
-            var decisionMelee = new BoolDecision(EstaEnMelee,
-                nodoTrue: nodoAtaqueMelee,
-                nodoFalse: nodoPerseguir);
-
-            var decisionDetectado = new BoolDecision(EstaDetectado,
-                nodoTrue: decisionMelee,
-                nodoFalse: nodoIdle);
-
-            // Subárbol: fase enrage
+            var decisionMelee       = new BoolDecision(EstaEnMelee,
+                nodoTrue: nodoAtaqueMelee,     nodoFalse: nodoPerseguir);
+            var decisionDetectado   = new BoolDecision(EstaDetectado,
+                nodoTrue: decisionMelee,       nodoFalse: nodoIdle);
             var decisionMeleeEnrage = new BoolDecision(EstaEnMelee,
-                nodoTrue: nodoEnrage,
-                nodoFalse: nodoPerseguir);
+                nodoTrue: nodoEnrage,          nodoFalse: nodoPerseguir);
 
-            // Raíz del árbol: ¿enrage?
-            var raiz = new BoolDecision(EstaEnEnrage,
-                nodoTrue: decisionMeleeEnrage,
-                nodoFalse: decisionDetectado);
-
-            return raiz;
+            return new BoolDecision(EstaEnEnrage,
+                nodoTrue: decisionMeleeEnrage, nodoFalse: decisionDetectado);
         }
     }
 }
