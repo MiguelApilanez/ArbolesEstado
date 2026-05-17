@@ -252,7 +252,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad5c4c46ccb4a8b449b3ada77e7b1c5c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
-  maxHealth: 137
+  maxHealth: 100
   healthSlider: {fileID: 1661889247}
 --- !u!1 &94568689
 GameObject:
@@ -3089,8 +3089,8 @@ MonoBehaviour:
   - {fileID: 679400212}
   - {fileID: 768278874}
   - {fileID: 778501060}
-  vidaMaxima: 300
   modoIA: 3
+  duracionAnimMuerte: 3
 --- !u!114 &516606948
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3175,7 +3175,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4323e4845fc84a4418c4793ab2de0947, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BossCombat
-  phase: 1
+  phase: 100
 --- !u!1 &528405989
 GameObject:
   m_ObjectHideFlags: 0

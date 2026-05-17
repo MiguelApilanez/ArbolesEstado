@@ -4,21 +4,18 @@ public class BossCombat : MonoBehaviour
 {
     public int phase = 1;
 
-    private BossHealth health;
     private Animator animator;
     private bool enraged = false;
     private bool isEnraging = false;
 
     void Start()
     {
-        health = GetComponent<BossHealth>();
         animator = GetComponent<Animator>();
     }
 
     public void Attack()
     {
-        if (isEnraging)
-            return;
+        if (isEnraging) return;
 
         if (phase == 1)
         {
@@ -42,17 +39,10 @@ public class BossCombat : MonoBehaviour
         }
     }
 
-    void Update()
-    {
-        if (!enraged && health.currentHealth <= health.maxHealth / 2)
-        {
-            EnterPhase2();
-        }
-    }
-
     public void EnterPhase2()
     {
-        Debug.Log("PHASE = " + phase);
+        if (enraged) return;
+
         enraged = true;
         phase = 2;
         isEnraging = true;

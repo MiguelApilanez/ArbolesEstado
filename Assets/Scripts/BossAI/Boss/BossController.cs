@@ -9,11 +9,11 @@ namespace BossAI
         public Transform playerTransform;
         public Transform[] waypoints;
 
-        [Header("Stats")]
-        public float vidaMaxima = 200f;
-
         [Header("Modo de IA")]
         public IAMode modoIA = IAMode.FSMGeneralista;
+
+        [Header("Muerte")]
+        [SerializeField] private float duracionAnimMuerte = 3f;
 
         public enum IAMode
         {
@@ -40,6 +40,8 @@ namespace BossAI
             navAgent   = GetComponent<NavMeshAgent>();
             bossCombat = GetComponent<BossCombat>();
             bossHealth = GetComponent<BossHealth>();
+
+            float vidaMaxima = bossHealth != null ? bossHealth.maxHealth : 200f;
 
             _agent = new BossAgent(gameObject, vidaMaxima)
             {
@@ -73,6 +75,8 @@ namespace BossAI
 
         private void Update()
         {
+            if (_muriendo) return;
+
             if (_agent != null)
                 _agent.PlayerTransform = playerTransform;
 
@@ -94,14 +98,13 @@ namespace BossAI
 
             ActualizarAnimaciones();
 
-            if (EstaMuerto() && !_muriendo)
+            if (EstaMuerto())
                 StartCoroutine(SecuenciaMuerte());
         }
 
         private System.Collections.IEnumerator SecuenciaMuerte()
         {
             _muriendo = true;
-            enabled = false;
 
             if (navAgent != null)
             {
@@ -113,7 +116,18 @@ namespace BossAI
 
             animator?.SetTrigger("Die");
 
-            yield return new WaitForSeconds(3f);
+            if (animator != null)
+            {
+                yield return null;
+                yield return new WaitUntil(() =>
+                    animator.GetCurrentAnimatorStateInfo(0).IsName("Die"));
+                yield return new WaitUntil(() =>
+                    animator.GetCurrentAnimatorStateInfo(0).normalizedTime >= 0.95f);
+            }
+            else
+            {
+                yield return new WaitForSeconds(duracionAnimMuerte);
+            }
 
             gameObject.SetActive(false);
         }
@@ -149,6 +163,7 @@ namespace BossAI
 
         public void RecibirDanio(float cantidad)
         {
+            if (_muriendo) return;
             if (_agent == null) return;
 
             _agent.VidaActual = Mathf.Max(0f, _agent.VidaActual - cantidad);
@@ -159,9 +174,6 @@ namespace BossAI
 
             if (_agent.VidaPorcentaje <= 40f && bossCombat != null && !bossCombat.HasEnraged())
                 bossCombat.EnterPhase2();
-
-            if (_agent.VidaActual <= 0f)
-                animator?.SetTrigger("Die");
         }
 
         public bool EstaMuerto() => _agent != null && _agent.VidaActual <= 0f;
