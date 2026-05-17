@@ -167,12 +167,13 @@ namespace BossAI
             // DAÑO
             // =========================
 
-            var playerHealth =
-                agent.PlayerTransform.GetComponent<PlayerHealth>();
+            var playerHealth = agent.PlayerTransform.GetComponentInParent<PlayerHealth>();
 
             if (playerHealth != null)
             {
-                playerHealth.TakeDamage(_danio);
+                playerHealth.TakeDamage((int)_danio);
+
+                Debug.Log("PLAYER HIT");
             }
         }
     }

@@ -47,24 +47,24 @@ namespace BossAI
             var estadoAtaque = new State(
                 accionesEstado: new AIAction[]
                 {
+                    meleeAction
                 },
 
                 accionesEntrada: new AIAction[]
                 {
-                    logAtacar,
-                    meleeAction
+                    logAtacar
                 }
             );
 
             var estadoAtaqueEnrage = new State(
                 accionesEstado: new AIAction[]
                 {
+                    meleeAction
                 },
 
                 accionesEntrada: new AIAction[]
                 {
-                    logAtacar,
-                    meleeAction
+                    logAtacar
                 }
             );
 
