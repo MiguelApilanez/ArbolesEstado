@@ -54,16 +54,33 @@ public class BossCombat : MonoBehaviour
         animator.SetTrigger("Enrage");
         Debug.Log("BOSS PHASE 2");
 
+        CameraFollow cam = Camera.main != null ? Camera.main.GetComponent<CameraFollow>() : null;
+        cam?.Shake(0.8f, 0.4f);
+
         StartCoroutine(FinEnrageCoroutine());
     }
 
     private System.Collections.IEnumerator FinEnrageCoroutine()
     {
         yield return null;
-        yield return new WaitUntil(() =>
-            animator.GetCurrentAnimatorStateInfo(0).IsName("Enrage"));
-        yield return new WaitUntil(() =>
-            !animator.GetCurrentAnimatorStateInfo(0).IsName("Enrage"));
+
+        float tiempoEsperaEntrada = 0f;
+        while (!animator.GetCurrentAnimatorStateInfo(0).IsName("Enrage") && tiempoEsperaEntrada < 2f)
+        {
+            tiempoEsperaEntrada += Time.deltaTime;
+            yield return null;
+        }
+
+        if (animator.GetCurrentAnimatorStateInfo(0).IsName("Enrage"))
+        {
+            float duracionClip = animator.GetCurrentAnimatorStateInfo(0).length;
+            yield return new WaitForSeconds(duracionClip);
+        }
+        else
+        {
+            yield return new WaitForSeconds(2f);
+        }
+
         EndEnrage();
     }
 
@@ -79,6 +96,9 @@ public class BossCombat : MonoBehaviour
         UnityEngine.AI.NavMeshAgent agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agent != null)
         {
+            if (UnityEngine.AI.NavMesh.SamplePosition(transform.position, out UnityEngine.AI.NavMeshHit hit, 3f, UnityEngine.AI.NavMesh.AllAreas))
+                transform.position = hit.position;
+
             agent.isStopped = false;
             agent.speed = 5f;
         }

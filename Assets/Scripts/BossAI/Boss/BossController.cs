@@ -9,7 +9,7 @@ namespace BossAI
         public Transform playerTransform;
         public Transform[] waypoints;
 
-        [Header("Modo de IA")]
+      
         public IAMode modoIA = IAMode.FSMGeneralista;
 
         [Header("Muerte")]
@@ -77,8 +77,20 @@ namespace BossAI
         {
             if (_muriendo) return;
 
+            if (EstaMuerto())
+            {
+                StartCoroutine(SecuenciaMuerte());
+                return;
+            }
+
             if (_agent != null)
                 _agent.PlayerTransform = playerTransform;
+
+            if (bossCombat != null && bossCombat.IsEnraging())
+            {
+                ActualizarAnimaciones();
+                return;
+            }
 
             switch (modoIA)
             {
@@ -97,9 +109,6 @@ namespace BossAI
             }
 
             ActualizarAnimaciones();
-
-            if (EstaMuerto())
-                StartCoroutine(SecuenciaMuerte());
         }
 
         private System.Collections.IEnumerator SecuenciaMuerte()
@@ -114,15 +123,19 @@ namespace BossAI
 
             if (bossCombat != null) bossCombat.enabled = false;
 
-            animator?.SetTrigger("Die");
-
             if (animator != null)
             {
+                animator.ResetTrigger("Hit");
+                animator.ResetTrigger("Attack1");
+                animator.ResetTrigger("Attack2");
+                animator.ResetTrigger("Attack3");
+                animator.ResetTrigger("Enrage");
+                animator.SetTrigger("Die");
                 yield return null;
                 yield return new WaitUntil(() =>
                     animator.GetCurrentAnimatorStateInfo(0).IsName("Die"));
-                yield return new WaitUntil(() =>
-                    animator.GetCurrentAnimatorStateInfo(0).normalizedTime >= 0.95f);
+                float duracionClip = animator.GetCurrentAnimatorStateInfo(0).length;
+                yield return new WaitForSeconds(duracionClip + 0.5f);
             }
             else
             {
@@ -165,15 +178,23 @@ namespace BossAI
         {
             if (_muriendo) return;
             if (_agent == null) return;
+            if (bossCombat != null && bossCombat.IsEnraging()) return;
 
             _agent.VidaActual = Mathf.Max(0f, _agent.VidaActual - cantidad);
             _agent.WasHit = true;
 
             bossHealth?.TakeDamage(cantidad);
-            animator?.SetTrigger("Hit");
 
-            if (_agent.VidaPorcentaje <= 40f && bossCombat != null && !bossCombat.HasEnraged())
+            if (_agent.VidaActual <= 0f) return;
+
+            bool vaAEnragear = _agent.VidaPorcentaje <= 40f
+                               && bossCombat != null
+                               && !bossCombat.HasEnraged();
+
+            if (vaAEnragear)
                 bossCombat.EnterPhase2();
+            else
+                animator?.SetTrigger("Hit");
         }
 
         public bool EstaMuerto() => _agent != null && _agent.VidaActual <= 0f;

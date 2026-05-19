@@ -22,6 +22,7 @@ public class CameraFollow : MonoBehaviour
 
     private float _yaw;
     private float _pitch;
+    private Vector3 _shakeOffset;
 
     void Start()
     {
@@ -43,7 +44,7 @@ public class CameraFollow : MonoBehaviour
         Vector3 puntoOrbita = target.position + Vector3.up * alturaExtra;
         Vector3 posDeseada = puntoOrbita - rotacion * Vector3.forward * distancia;
 
-        transform.position = Vector3.Lerp(transform.position, posDeseada, suavizado * Time.deltaTime);
+        transform.position = Vector3.Lerp(transform.position, posDeseada, suavizado * Time.deltaTime) + _shakeOffset;
         transform.LookAt(puntoOrbita);
 
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -54,4 +55,27 @@ public class CameraFollow : MonoBehaviour
     }
 
     public float GetYaw() => _yaw;
+
+    public void Shake(float duracion = 0.7f, float magnitud = 0.35f)
+    {
+        StartCoroutine(ShakeCoroutine(duracion, magnitud));
+    }
+
+    private System.Collections.IEnumerator ShakeCoroutine(float duracion, float magnitud)
+    {
+        float elapsed = 0f;
+        while (elapsed < duracion)
+        {
+            float progreso = elapsed / duracion;
+            float magnitudActual = magnitud * (1f - progreso);
+            _shakeOffset = new Vector3(
+                Random.Range(-1f, 1f) * magnitudActual,
+                Random.Range(-1f, 1f) * magnitudActual,
+                0f
+            );
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        _shakeOffset = Vector3.zero;
+    }
 }

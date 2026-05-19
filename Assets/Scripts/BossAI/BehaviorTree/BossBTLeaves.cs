@@ -142,6 +142,7 @@ namespace BossAI
             }
 
             agent.Animator?.SetTrigger("Attack2");
+            Debug.Log("¡CONTRAATAQUE!");
 
             return BTStatus.Success;
         }
